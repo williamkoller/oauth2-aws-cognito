@@ -1,6 +1,8 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common'
 import { AuthenticationDetails, CognitoUser, CognitoUserAttribute, CognitoUserPool } from 'amazon-cognito-identity-js'
-import { AuthConfig } from './auth.config'
+import { AuthConfig } from './config/auth.config'
+import { AuthCredentialsDto } from './dtos/auth-credentials.dto'
+import { AuthRegisterDto } from './dtos/auth-register.dto'
 
 @Injectable()
 export class AuthService {
@@ -12,8 +14,12 @@ export class AuthService {
     })
   }
 
-  registerUser(registerRequest: { name: string; email: string; password: string }) {
-    const { name, email, password } = registerRequest
+  get secretKey() {
+    return this.authConfig.secretKey
+  }
+
+  registerUser(authRegisterRequest: AuthRegisterDto) {
+    const { name, email, password } = authRegisterRequest
 
     return new Promise((resolve, reject) => {
       return this.userPool.signUp(
@@ -32,7 +38,7 @@ export class AuthService {
     })
   }
 
-  authenticateUser(user: { name: string; password: string }) {
+  authenticateUser(user: AuthCredentialsDto) {
     try {
       const { name, password } = user
 
