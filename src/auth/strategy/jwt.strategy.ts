@@ -1,22 +1,31 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common'
+import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { PassportStrategy } from '@nestjs/passport'
+import { passportJwtSecret } from 'jwks-rsa'
 import { Strategy, ExtractJwt } from 'passport-jwt'
 import { AuthService } from '../auth.service'
+import { AuthConfig } from '../config/auth.config'
 import { handler } from '../jwt/jwt-token'
 import { ClaimVerifyResultType } from '../jwt/types'
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  private readonly logger = new Logger(JwtStrategy.name)
-  constructor(private readonly authService: AuthService) {
+  constructor(private readonly authService: AuthService, private authConfig: AuthConfig) {
     super({
+      secretOrKeyProvider: passportJwtSecret({
+        cache: true,
+        rateLimit: true,
+        jwksRequestsPerMinute: 5,
+        jwksUri: `${authConfig.authority}/.weel-kown/jwks.json`,
+      }),
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: authService.secretKey,
+      audience: authConfig.clientId,
+      issuer: authConfig.authority,
+      algoritms: ['RS256'],
     })
   }
 
   public async validate(payload: any, done: (err: Error | null, result: ClaimVerifyResultType) => void) {
     const userInfo = await handler(payload)
-    this.logger.log(`userInfo: ${userInfo}`)
+    console.log('userInfo', userInfo)
     if (!userInfo) {
       return done(new UnauthorizedException(), null)
     }
