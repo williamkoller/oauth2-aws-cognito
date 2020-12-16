@@ -1,9 +1,11 @@
-import { BadRequestException, Body, Controller, Post } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Get, Post, Query } from '@nestjs/common'
 import { AuthService } from './auth.service'
 import { AuthCredentialsDto } from './dtos/auth-credentials.dto'
 import { AuthRegisterDto } from './dtos/auth-register.dto'
-
-@Controller('auth')
+import axios from 'axios'
+import * as dotenv from 'dotenv'
+dotenv.config({ path: './.env' })
+@Controller()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -31,5 +33,45 @@ export class AuthController {
     } catch (e) {
       throw new BadRequestException(e.message)
     }
+  }
+
+  @Get()
+  async getCode(@Query('code') code: string) {
+    const client_id = `${process.env.CLIENT_ID}`
+    const client_secret = `${process.env.CLIENT_SECRET}`
+    const authorization_code = 'authorization_code'
+    console.log({
+      code,
+      client_id,
+      client_secret,
+    })
+
+    await axios
+      .get(
+        `https://sso.plurall.net/oauth/token?grant_type=${authorization_code}&code=${code}&client_id=${client_id}&client_secret=${client_secret}`,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          },
+        },
+      )
+      .then((response) => {
+        console.log('Return ****', response)
+        return response
+      })
+      .then((response) => {
+        axios
+          .get('https://sso.plurall.net/oauth/userinfo', {
+            headers: {
+              Authorization: `Bearer ${response.data.access_token}`,
+            },
+          })
+          .then((response) => {
+            console.log(JSON.stringify(response.data))
+            return response.data
+          })
+          .catch((error) => console.log('Error first catch: ', error))
+      })
+      .catch((error) => console.log('Error ****', error))
   }
 }
